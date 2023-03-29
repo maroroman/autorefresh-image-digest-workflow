@@ -62,23 +62,26 @@ jobs:
         id: digest
         run: echo "digest=$(skopeo inspect docker://${{ env.TAG }} | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')" >> ${GITHUB_OUTPUT}
 
-      - name: Swith to release-a branch
+
+      - name: Checkout release branch 
         uses: actions/checkout@v3
         with:
           ref: release-a
+      
 
       - name: Modifies the yaml file from the release branch with the new weekly digest
         shell: bash
         env:
           DIGEST: ${{ steps.digest.outputs.digest }}
         run: |
-         echo "yq -i -Y '.spec.tags[0].from.name = "'"${${{ env.DIGEST }}//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml" >> ${GITHUB_OUTPUT}
-         
+       
+         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+         git config --global user.name "GitHub Actions"
+        
          # Fetch the target branch
          git fetch origin release-a
 
-         # Switch to the target branch
-         git checkout release-a
+         yq e '.spec.tags[0].from.name = "'"$(echo ${{ env.DIGEST }} | sed 's/\"/\//g')"'"' -i notebook-images/base/minimal-notebook-imagestream.yaml
 
          # Commit the changes
          git add notebook-images/base/minimal-notebook-imagestream.yaml
@@ -91,3 +94,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: main
+      
+      - name: Scopeo Logout
+        shell: bash
+        run: skopeo logout quay.io -a
