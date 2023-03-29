@@ -25,30 +25,30 @@ jobs:
         run: |
          skopeo login quay.io -u  rh_ee_atheodor  -p '(H3ll0Th3r3_89)'
 
-      - name: Update the minimal Image Stream tag [0]
-        shell: bash
-        run: |
-          # Reads the first image tag of the image stream
-          tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')
+      # - name: Update the minimal Image Stream tag [0]
+      #   shell: bash
+      #   run: |
+      #     # Reads the first image tag of the image stream
+      #     tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')
 
-          # Fetch the image in digest format using image tag name from quay.io
-          digest=$(skopeo inspect docker://$tag | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')
+      #     # Fetch the image in digest format using image tag name from quay.io
+      #     digest=$(skopeo inspect docker://$tag | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')
 
-          # Fetch the target branch
-          git fetch origin release-a
+      #     # Fetch the target branch
+      #     git fetch origin release-a
 
-          # Switch to the target branch
-          git checkout release-a
+      #     # Switch to the target branch
+      #     git checkout release-a
 
-          # Modifies the yaml file from the release branch with the new weekly digest
-          yq -i -Y '.spec.tags[0].from.name = "'"${digest//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml
+      #     # Modifies the yaml file from the release branch with the new weekly digest
+      #     yq -i -Y '.spec.tags[0].from.name = "'"${digest//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml
 
-          # Commit the changes
-          git add notebook-images/base/minimal-notebook-imagestream.yaml
-          git commit -m "Update file"
+      #     # Commit the changes
+      #     git add notebook-images/base/minimal-notebook-imagestream.yaml
+      #     git commit -m "Update file"
 
-          # Push the changes to the target branch
-          git push origin release-a
+      #     # Push the changes to the target branch
+      #     git push origin release-a
 
       - name: Reads the first image tag
         shell: bash
