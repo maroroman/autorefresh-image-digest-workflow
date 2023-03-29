@@ -1,0 +1,60 @@
+name: Image Stream Digest Updater
+on:
+  push:
+    branches:
+      - main
+env:
+    QUAY_ODH_DASHBOARD_IMAGE_REPO: ${{ secrets.QUAY_ODH_DASHBOARD_IMAGE_REPO }}
+jobs:
+  modify-yaml-file:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+
+      - name: Install skopeo
+        shell: bash
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install skopeo
+
+      - name: Login to quay.io
+        shell: bash
+        run: |
+         skopeo login quay.io -u  rh_ee_atheodor  -p '(H3ll0Th3r3_89)'
+
+      - name: Update the minimal Image Stream tag [0]
+        shell: bash
+        run: |
+          # Reads the first image tag of the image stream
+          tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')
+
+          # Fetch the image in digest format using image tag name from quay.io
+          digest=$(skopeo inspect docker://$tag | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')
+
+          # Fetch the target branch
+          git fetch origin release-a
+
+          # Switch to the target branch
+          git checkout release-a
+
+          # Modifies the yaml file from the release branch with the new weekly digest
+          yq -i -Y '.spec.tags[0].from.name = "'"${digest//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml
+
+          # Commit the changes
+          git add notebook-images/base/minimal-notebook-imagestream.yaml
+          git commit -m "Update file"
+
+          # Push the changes to the target branch
+          git push origin release-a
+
+      - name: Checkout main branch again
+        uses: actions/checkout@v3
+        with:
+          ref: main
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
