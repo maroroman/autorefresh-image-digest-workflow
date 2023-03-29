@@ -50,6 +50,32 @@ jobs:
           # Push the changes to the target branch
           git push origin release-a
 
+      - name: Reads the first image tag
+        shell: bash
+        id: tag
+        run: echo "tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')" >> ${GITHUB_OUTPUT}
+
+      - name: Fetch the image in digest format using image tag name from quay.io
+        shell: bash
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        id: digest
+        run: echo "digest=$(skopeo inspect docker://${{ env.TAG }} | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')" >> ${GITHUB_OUTPUT}
+
+      - name: Swith to release-a branch
+        uses: actions/checkout@v3
+        with:
+          ref: release-a
+
+      - name: Modifies the yaml file from the release branch with the new weekly digest
+        shell: bash
+        env:
+          DIGEST: ${{ steps.digest.outputs.digest }}
+        run: echo "yq -i -Y '.spec.tags[0].from.name = "'"${${{ env.DIGEST }}//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml" >> ${GITHUB_OUTPUT}
+
+
+
+
       - name: Checkout main branch again
         uses: actions/checkout@v3
         with:
