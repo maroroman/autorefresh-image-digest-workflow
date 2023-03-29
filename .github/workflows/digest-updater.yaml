@@ -3,8 +3,6 @@ on:
   push:
     branches:
       - main
-env:
-    QUAY_ODH_DASHBOARD_IMAGE_REPO: ${{ secrets.QUAY_ODH_DASHBOARD_IMAGE_REPO }}
 jobs:
   modify-yaml-file:
     runs-on: ubuntu-latest
