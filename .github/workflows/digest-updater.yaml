@@ -71,10 +71,21 @@ jobs:
         shell: bash
         env:
           DIGEST: ${{ steps.digest.outputs.digest }}
-        run: echo "yq -i -Y '.spec.tags[0].from.name = "'"${${{ env.DIGEST }}//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml" >> ${GITHUB_OUTPUT}
+        run: |
+         echo "yq -i -Y '.spec.tags[0].from.name = "'"${${{ env.DIGEST }}//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml" >> ${GITHUB_OUTPUT}
+         
+         # Fetch the target branch
+         git fetch origin release-a
 
+         # Switch to the target branch
+         git checkout release-a
 
+         # Commit the changes
+         git add notebook-images/base/minimal-notebook-imagestream.yaml
+         git commit -m "Update file"
 
+         # Push the changes to the target branch
+         git push origin release-a
 
       - name: Checkout main branch again
         uses: actions/checkout@v3
