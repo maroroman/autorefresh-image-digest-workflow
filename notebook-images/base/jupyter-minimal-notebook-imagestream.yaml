@@ -22,7 +22,7 @@ spec:
       opendatahub.io/default-image: "true"
     from:
       kind: DockerImage
-      name: quay.io/rh_ee_atheodor/notebooks:jupyter-minimal-ubi9-python-3.9-20230127
+      name: quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2023a-weekly
     name: "py3.9-v2"
     referencePolicy:
       type: Local
@@ -33,7 +33,7 @@ spec:
       openshift.io/imported-from: quay.io/modh/odh-minimal-notebook-container
     from:
       kind: DockerImage
-      name: quay.io/rh_ee_atheodor/notebooks:base-ubi9-python-3.9_2023a_20230127
+      name: quay.io/opendatahub/workbench-images:jupyter-minimal-ubi8-python-3.8-2023a-weekly
     name: "py3.8-v1"
     referencePolicy:
       type: Local

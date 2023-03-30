@@ -1,100 +1,222 @@
-name: Image Stream Digest Updater
+# name: Image Stream Updater. 
+# on:
+#   workflow_dispatch:  # for manual trigger workflow from GH Web UI
+#     inputs:
+#       hash:
+#         required: true
+#         description: "Provide Git Hash (Check out the commit generated from the github-actions[bot]: https://github.com/opendatahub-io/notebooks)"
+#       branch:
+#         required: true
+#         description: "Provide release branch name"
+# jobs:
+#   modify-yaml-file:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       # Give the default GITHUB_TOKEN write permission to commit and push the
+#       # added or changed files to the repository.
+#       contents: write
+
+#     steps:
+#       # Get the git hash provided by the user. He may find it in this link: https://github.com/opendatahub-io/notebooks/commits/2023a
+#       # The user should pick the commit generated from the github-actions[bot]
+#       - name: Get git-hash
+#         if: github.event.inputs.hash != ''
+#         run: echo "Git hash ${{ inputs.hash }}"
+
+#       # Get the release branch, is the branch will apply the changes
+#       - name: Get release branch
+#         if: github.event.inputs.branch != ''
+#         run: echo "Release branch name ${{ inputs.branch }}"
+        
+#       - name: Configure Git
+#         run: |
+#          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "GitHub Actions"
+
+#       - name: Install Skopeo CLI
+#         shell: bash
+#         run: |
+#           sudo apt-get -y update
+#           sudo apt-get -y install skopeo
+
+#       - name: Checkout main to fetch the image ref
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
+
+#       # Feches from .spec.tags[0].from.name
+#       - name: Fetch Name Image from Main Branch Image Stream (Minimal Step 1)
+#         shell: bash
+#         id: img_name1
+#         run: |
+#          echo "img_name1=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+
+#       # Checkout code from the release branch to apply the updates
+#       - name: Checkout branch
+#         uses: actions/checkout@v3
+#         with:
+#           ref: ${{ inputs.branch }}
+
+#       # It will return the latest weekly in year index format: ex: jupyter-minimal-ubi9-python-3.9-2023a-20230327-267797c to use it on the next step
+#       - name: Fetch the Latest Weekly Tag Name According to the Git-Hash Commit (Minimal Step 2)
+#         shell: bash
+#         id: latest_tag1
+#         env:
+#           IMG_NAME1: ${{ steps.img_name1.outputs.img_name1 }}
+#         run: |
+#          echo "latest_tag1=$(skopeo inspect docker://${{ env.IMG_NAME1 }} | jq .RepoTags | grep -E jupyter-minimal-ubi9-python-3\.9-2023a-\[0-9]+-${{ inputs.hash }} | head -n 1 | sed 's/[,"[:space:]]//g')" >> ${GITHUB_OUTPUT}
+
+#       # Using the tag from the above step returns the result in digest format
+#       - name: Return The Result in Digest Format (Minimal Step 3)
+#         shell: bash
+#         id: digest1
+#         env:
+#           LATEST_TAG1: ${{ steps.latest_tag1.outputs.latest_tag1 }}
+#         run: |
+#          echo digest1=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:${{ env.LATEST_TAG1}} | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g') >> ${GITHUB_OUTPUT}
+
+#       # Populate the Image Stream With The Digest Format and Commit the Changes
+#       - name: Populate the Image Stream With The Digest Format and Commit the Changes (Minimal Step 4)
+#         shell: bash
+#         env:
+#           DIGEST1: ${{ steps.digest1.outputs.digest1 }}
+#         run: |
+#          yq e '.spec.tags[0].from.name = "'"$(echo ${{ env.DIGEST1}})"'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+#          git fetch origin ${{ inputs.branch }}
+#          git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+#          git commit -m "Update file"
+#          git push origin ${{ inputs.branch }}
+
+
+###################### second shorter way 
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       hash:
+#         required: true
+#         description: "Provide Git Hash (Check out the commit generated from the github-actions[bot]: https://github.com/opendatahub-io/notebooks)"
+#       branch:
+#         required: true
+#         description: "Provide release branch name"
+
+# jobs:
+#   modify-yaml-file:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+
+#     steps:
+#       - name: Configure Git
+#         run: |
+#          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "GitHub Actions"
+
+#       - name: Install Skopeo CLI
+#         shell: bash
+#         run: |
+#           sudo apt-get -y update
+#           sudo apt-get -y install skopeo
+
+
+#       # Step 3 
+#       - name: Checkout main to fetch the image ref
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
+
+# #       # Fetches from .spec.tags[0].from.name
+#       - name: Fetch Name Image from Main Branch Image Stream (Minimal Step 1)
+#         shell: bash
+#         id: img_name
+#         run: |
+#          echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+
+#       - name: Checkout main to fetch the image ref
+#         uses: actions/checkout@v3
+#         with:
+#           ref:  ${{ inputs.branch }}
+
+#       - name: Fetch image name, latest weekly tag name, and image digest
+#         shell: bash
+#         env: 
+#          IMG_NAME: ${{ steps.img_name.outputs.img_name }}
+#         run: |
+#           latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg hash ${{ inputs.hash }} '.RepoTags | map(select(. | test("jupyter-minimal-ubi9-python-3\\.9-2023a-\\d+-${{ inputs.hash }}"))) | .[0]')
+#           digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag |  jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
+#           digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
+#           yq e '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+#           git fetch origin ${{ inputs.branch }}
+#           git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+#           git commit -m "Update file"
+#           git push origin ${{ inputs.branch }}
+
+
+###################
+
+
+
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      hash:
+        required: true
+        description: "Provide Git Hash (Check out the commit generated from the github-actions[bot]: https://github.com/opendatahub-io/notebooks)"
+      branch:
+        required: true
+        description: "Provide release branch name"
+
 jobs:
   modify-yaml-file:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
+      - name: Configure Git
+        run: |
+         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+         git config --global user.name "GitHub Actions"
 
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          ref: main
-
-      - name: Install skopeo
+      - name: Install Skopeo CLI
         shell: bash
         run: |
           sudo apt-get -y update
           sudo apt-get -y install skopeo
 
-      - name: Login to quay.io
-        shell: bash
-        run: |
-         skopeo login quay.io -u  rh_ee_atheodor  -p '(H3ll0Th3r3_89)'
 
-      # - name: Update the minimal Image Stream tag [0]
-      #   shell: bash
-      #   run: |
-      #     # Reads the first image tag of the image stream
-      #     tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')
-
-      #     # Fetch the image in digest format using image tag name from quay.io
-      #     digest=$(skopeo inspect docker://$tag | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')
-
-      #     # Fetch the target branch
-      #     git fetch origin release-a
-
-      #     # Switch to the target branch
-      #     git checkout release-a
-
-      #     # Modifies the yaml file from the release branch with the new weekly digest
-      #     yq -i -Y '.spec.tags[0].from.name = "'"${digest//\"/}"'"' notebook-images/base/minimal-notebook-imagestream.yaml
-
-      #     # Commit the changes
-      #     git add notebook-images/base/minimal-notebook-imagestream.yaml
-      #     git commit -m "Update file"
-
-      #     # Push the changes to the target branch
-      #     git push origin release-a
-
-      - name: Reads the first image tag
-        shell: bash
-        id: tag
-        run: echo "tag=$(yq '.spec.tags[0].from.name' notebook-images/base/minimal-notebook-imagestream.yaml | tr -d '"')" >> ${GITHUB_OUTPUT}
-
-      - name: Fetch the image in digest format using image tag name from quay.io
-        shell: bash
-        env:
-          TAG: ${{ steps.tag.outputs.tag }}
-        id: digest
-        run: echo "digest=$(skopeo inspect docker://${{ env.TAG }} | jq .Digest | sed 's/sha256/quay.io\/rh_ee_atheodor\/notebooks@sha256/g')" >> ${GITHUB_OUTPUT}
-
-
-      - name: Checkout release branch 
-        uses: actions/checkout@v3
-        with:
-          ref: release-a
-      
-
-      - name: Modifies the yaml file from the release branch with the new weekly digest
-        shell: bash
-        env:
-          DIGEST: ${{ steps.digest.outputs.digest }}
-        run: |
-       
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
-        
-         # Fetch the target branch
-         git fetch origin release-a
-
-         yq e '.spec.tags[0].from.name = "'"$(echo ${{ env.DIGEST }} | sed 's/\"/\//g')"'"' -i notebook-images/base/minimal-notebook-imagestream.yaml
-
-         # Commit the changes
-         git add notebook-images/base/minimal-notebook-imagestream.yaml
-         git commit -m "Update file"
-
-         # Push the changes to the target branch
-         git push origin release-a
-
-      - name: Checkout main branch again
+      # Step 3 
+      - name: Checkout main to fetch the image ref
         uses: actions/checkout@v3
         with:
           ref: main
-      
-      - name: Scopeo Logout
+
+#       # Fetches from .spec.tags[0].from.name
+      - name: Fetch Name Image from Main Branch Image Stream (Minimal Step 1)
         shell: bash
-        run: skopeo logout quay.io -a
+        id: img_name
+        run: |
+         echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+
+      - name: Checkout main to fetch the image ref
+        uses: actions/checkout@v3
+        with:
+          ref:  ${{ inputs.branch }}
+
+      - name: Fetch image name, latest weekly tag name, and image digest
+        shell: bash
+        env: 
+         IMG_NAME: ${{ steps.img_name.outputs.img_name }}
+        run: |
+          
+          registry=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f1)
+          image_tag=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f2)
+          src_tag=$(echo $image_tag | cut -d '-' -f 1-5)
+          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg hash ${{ inputs.hash }} '.RepoTags | map(select(. | test("$src_tag-2023a-\\d+-${{ inputs.hash }}"))) | .[0]')
+          digest=$(skopeo inspect docker://$registry:$latest_tag |  jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
+          digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
+          yq e '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+          git fetch origin ${{ inputs.branch }}
+          git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+          git commit -m "Update file"
+          git push origin ${{ inputs.branch }}
