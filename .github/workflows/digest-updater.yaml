@@ -186,22 +186,39 @@ jobs:
 
 
       # Step 3 
-      - name: Checkout main to fetch the image ref
-        uses: actions/checkout@v3
-        with:
-          ref: main
-
-#       # Fetches from .spec.tags[0].from.name
-      - name: Fetch Name Image from Main Branch Image Stream (Minimal Step 1)
+      - name: Fetch image name, latest weekly tag name, and image digest
         shell: bash
-        id: img_name
         run: |
-         echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-datascience-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+          # Checkout the main branch to fetch the image ref
+          git checkout main
 
-      - name: Checkout main to fetch the image ref
-        uses: actions/checkout@v3
-        with:
-          ref:  ${{ inputs.branch }}
+          # Fetch the image name from the main branch image stream
+          img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-datascience-notebook-imagestream.yaml | sed 's/\"/\//g')
+
+          # Checkout the specified branch
+          git checkout ${{ inputs.branch }}
+
+          # Fetch the latest weekly tag name and image digest
+          src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
+          regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
+          latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+          digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
+
+          # Update the image stream YAML with the new digest
+          yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
+
+          # Push the changes to the specified branch
+          git add notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
+          git commit -m "Update file"
+          git push origin ${{ inputs.branch }}
+
+
+
+
+
+
+
+### Notes 
 
       # - name: Fetch image name, latest weekly tag name, and image digest
       #   shell: bash
@@ -221,12 +238,3 @@ jobs:
       #     git commit -m "Update file"
       #     git push origin ${{ inputs.branch }}
 
-      - name: Fetch image name, latest weekly tag name, and image digest
-        run: |
-          img_name=${{ steps.img_name.outputs.img_name }}
-          src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
-          regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
-          latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-          digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
-          yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
-          git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-datascience-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
