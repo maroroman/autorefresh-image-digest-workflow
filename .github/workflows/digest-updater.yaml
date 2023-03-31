@@ -152,22 +152,104 @@
 #           git push origin ${{ inputs.branch }}
 
 
-###################
+################### Loop trial working 50%
 
 
+
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       hash:
+#         required: true
+#         description: "Provide Git Hash (Check out the commit generated from the github-actions[bot]: https://github.com/opendatahub-io/notebooks)"
+#       branch:
+#         required: true
+#         description: "Provide release branch name"
+
+# jobs:
+#   modify-yaml-file:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+
+#     steps:
+#       - name: Configure Git
+#         run: |
+#          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "GitHub Actions"
+
+#       - name: Install Skopeo CLI
+#         shell: bash
+#         run: |
+#           sudo apt-get -y update
+#           sudo apt-get -y install skopeo
+
+#       - name: Checkout main to fetch the image ref
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
+#       # # Fetches from .spec.tags[0].from.name
+#       # - name: Fetch Name Image from Main Branch Image Stream (Step 1)
+#       #   shell: bash
+#       #   id: img_name
+#       #   run: |
+#       #    echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-datascience-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+#       # - name: Checkout main to fetch the image ref
+#       #   uses: actions/checkout@v3
+#       #   with:
+#       #     ref:  ${{ inputs.branch }}
+#       # - name: Fetch image name, latest weekly tag name, and image digest (Step 2)
+#       #   run: |
+#       #     img_name=${{ steps.img_name.outputs.img_name }}
+#       #     src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
+#       #     regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
+#       #     latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+#       #     digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
+#       #     yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
+#       #     git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-datascience-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+
+#       # Loop over YAML files in notebook-images/base/ directory
+#       - name: Loop over YAML files
+#         id: loop
+#         run: |
+#           for file in notebook-images/base/*.yaml
+#           do
+#             git fetch --all 
+#             git pull --all 
+#             img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
+#             git checkout origin release
+#             echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
+#             src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
+#             regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
+#             latest_tag=$(skopeo inspect docker://"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+#             digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
+#             yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i $file
+#             git add $file && git commit -m "Update $file" $$ git push origin release
+#             git checkout origin main
+#           done
+
+      # - name: add and push to release
+      #   uses: EndBug/add-and-commit@v9
+      #   with:
+      #     default_author: github_actions
+      #     new_branch: ${{ inputs.branch }}
+      #     message: 'Your commit message'
+
+
+#######################
 
 on:
   workflow_dispatch:
     inputs:
-      hash:
-        required: true
-        description: "Provide Git Hash (Check out the commit generated from the github-actions[bot]: https://github.com/opendatahub-io/notebooks)"
       branch:
         required: true
-        description: "Provide release branch name"
+        description: "Provide release branch name that you want to update the digests"
+      notebooks_release:
+        required: true
+        description: "Provide notebook release ex:2023a"
 
 jobs:
-  modify-yaml-file:
+  update-yaml:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -184,57 +266,92 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install skopeo
 
-      - name: Checkout main to fetch the image ref
+      - name: Checkout upstream notebooks repo
+        uses: actions/checkout@v3
+        with:
+         repository: opendatahub-io/notebooks.git
+         ref: 2023a
+
+      - name: Retrive latest weekly commit hash from the release branch
+        id: hash
+        shell: bash
+        run: |
+          echo "hash=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
+
+     # Updates yaml files      
+
+      - name: Checkout main from the odh-manifest repo
         uses: actions/checkout@v3
         with:
           ref: main
-      # # Fetches from .spec.tags[0].from.name
-      # - name: Fetch Name Image from Main Branch Image Stream (Step 1)
-      #   shell: bash
-      #   id: img_name
-      #   run: |
-      #    echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-datascience-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
-      # - name: Checkout main to fetch the image ref
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref:  ${{ inputs.branch }}
-      # - name: Fetch image name, latest weekly tag name, and image digest (Step 2)
-      #   run: |
-      #     img_name=${{ steps.img_name.outputs.img_name }}
-      #     src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
-      #     regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
-      #     latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-      #     digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
-      #     yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
-      #     git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-datascience-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
 
-            # Loop over YAML files in notebook-images/base/ directory
-      - name: Loop over YAML files
-        id: loop
+      - name: Fetch Name Image from Main Branch Image Stream (Step 1)
+        shell: bash
+        id: img_name
         run: |
-          for file in notebook-images/base/*.yaml
-          do
-            git fetch --all 
-            git pull --all 
-            img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
-            git checkout origin {{ inputs.branch }}
-            echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
-            src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
-            regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
-            latest_tag=$(skopeo inspect docker://"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-            digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
-            yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i $file
-            git add $file && git commit -m "Update $file" $$ git push origin {{ inputs.branch }}
-            git checkout origin main
-          done
+         echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
 
-      # - name: add and push to release
-      #   uses: EndBug/add-and-commit@v9
-      #   with:
-      #     default_author: github_actions
-      #     new_branch: ${{ inputs.branch }}
-      #     message: 'Your commit message'
+      - name: Checkout release branch
+        uses: actions/checkout@v3
+        with:
+          ref:  ${{ inputs.branch }}
 
+      - name: Fetch digest, and update the imagestream file (Step 2)
+        env:
+          HASH: ${{ steps.hash.outputs.hash }}
+          IMG_NAME: ${{ steps.img_name.outputs.img_name }}
+        run: |
+          notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
+          src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
+          regex="$src_tag-${{ inputs.notebooks_release }}-\\d+-${{ env.HASH }}"
+          echo $regex
+          
+          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E $regex | head -n 1 | sed 's/[,"[:space:]]//g')
+          echo $latest_tag
+
+          digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
+          digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
+          echo $digest
+          
+          yq eval '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+          git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+
+
+# img_name=quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
+
+# registry=$(echo $img_name | cut -d':' -f1)
+# image_tag=$(echo $img_name  | cut -d':' -f2)
+# src_tag=$(echo $image_tag |  sed 's/-2023a.*//')
+
+
+
+# skopeo inspect docker://$img_name | jq .RepoTags | grep -E $src_tag-2023a-\[0-9]+-267797c | head -n 1 | sed 's/[,"[:space:]]//g'
+
+
+
+
+# quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
+
+
+      # # Loop over YAML files in notebook-images/base/ directory
+      # - name: Loop over YAML files
+      #   id: loop
+      #   run: |
+      #     for file in notebook-images/base/*.yaml
+      #     do
+      #       git fetch --all 
+      #       git pull --all 
+      #       img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
+      #       git checkout origin release
+      #       echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
+      #       src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
+      #       regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
+      #       latest_tag=$(skopeo inspect docker://"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+      #       digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
+      #       yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i $file
+      #       git add $file && git commit -m "Update $file" $$ git push origin release
+      #       git checkout origin main
+      #     done
 
 
 
@@ -257,4 +374,18 @@ jobs:
       #     git add notebook-images/base/jupyter-datascience-notebook-imagestream.yaml
       #     git commit -m "Update file"
       #     git push origin ${{ inputs.branch }}
+
+
+
+####
+# IMG_NAME: quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
+#skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly | jq .RepoTags | grep -E jupyter-datascience-ubi9-python-3\.9-2023a-\[0-9]+-267797c | head -n 1 | sed 's/[,"[:space:]]//g'   -> jupyter-datascience-ubi9-python-3.9-2023a-20230327-267797c
+
+
+# digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-20230327-267797c | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g') >> ${GITHUB_OUTPUT} -> "quay.io/opendatahub/workbench-images@sha256:033cfd66da0993235eb4f872ad21be6b7601d8479db5a3bab0633862c6686c2a"
+
+
+# echo -e  "    - Generated Annotations: $str_annotations " | tr -d '\\'
+# yq -i -Y '.spec.tags['$cur_pos'].annotations."opendatahub.io/notebook-python-dependencies" = "'$str_annotations'"' $file
+
 
