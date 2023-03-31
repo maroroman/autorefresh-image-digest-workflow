@@ -211,7 +211,7 @@ jobs:
           # quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2023a-weekly
           registry=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f1)
           image_tag=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f2)
-          src_tag=$(echo $image_tag | cut -d '-' -f 1-5)
+          src_tag=$(echo $image_tag |  sed 's/-2023a.*//)
           regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
 
           latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2023a-weekly | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
