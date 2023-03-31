@@ -208,11 +208,15 @@ jobs:
         env: 
          IMG_NAME: ${{ steps.img_name.outputs.img_name }}
         run: |
-          
+          # quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2023a-weekly
           registry=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f1)
           image_tag=$(echo ${{ env.IMG_NAME }}  | cut -d':' -f2)
           src_tag=$(echo $image_tag | cut -d '-' -f 1-5)
-          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg hash ${{ inputs.hash }} '.RepoTags | map(select(. | test("$src_tag-2023a-\\d+-${{ inputs.hash }}"))) | .[0]')
+          regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
+
+          latest_tag=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-minimal-ubi9-python-3.9-2023a-weekly | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+
+          # latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg hash ${{ inputs.hash }} '.RepoTags | map(select(. | test("$src_tag-2023a-\\d+-${{ inputs.hash }}"))) | .[0]')
           digest=$(skopeo inspect docker://$registry:$latest_tag |  jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
           digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
           yq e '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
