@@ -214,12 +214,12 @@ jobs:
         run: |
           for file in notebook-images/base/*.yaml
           do
-            # Fetches from .spec.tags[0].from.name
+            git checkout main
             img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
             echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
 
             # Checkout branch to modify YAML file
-            git switch ${{ inputs.branch }}
+            git checkout ${{ inputs.branch }}
             # Fetch image name, latest weekly tag name, and image digest
             src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
             regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
