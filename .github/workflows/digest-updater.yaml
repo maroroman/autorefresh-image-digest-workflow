@@ -214,21 +214,26 @@ jobs:
         run: |
           for file in notebook-images/base/*.yaml
           do
+            git fetch --all 
+            git pull --all 
             img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
+            git checkout origin {{ inputs.branch }}
             echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
             src_tag=$(echo "$img_name" | sed 's/-2023a.*//')
             regex="$src_tag-2023a-\\d+-${{ inputs.hash }}"
             latest_tag=$(skopeo inspect docker://"$src_tag-2023a-weekly" | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
             digest=$(skopeo inspect "docker://$img_name" | jq -r '.Digest')
             yq eval '.spec.tags[0].from.name = "'quay.io/opendatahub/workbench-images@$digest'"' -i $file
-            git add $file && git commit -m "Update $file"
+            git add $file && git commit -m "Update $file" $$ git origin {{ inputs.branch }}
+            git checkout origin main
           done
 
-      - name: add and push to release
-        uses: EndBug/add-and-commit@v9
-        with:
-          default_author: github_actions
-          new_branch: ${{ inputs.branch }}
+      # - name: add and push to release
+      #   uses: EndBug/add-and-commit@v9
+      #   with:
+      #     default_author: github_actions
+      #     new_branch: ${{ inputs.branch }}
+      #     message: 'Your commit message'
 
 
 
