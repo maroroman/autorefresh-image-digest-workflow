@@ -214,8 +214,6 @@ jobs:
         run: |
           for file in notebook-images/base/*.yaml
           do
-            # Checkout main to fetch the image ref
-            git checkout main
             # Fetches from .spec.tags[0].from.name
             img_name=$(yq '.spec.tags[0].from.name' $file | sed 's/\"/\//g')
             echo "img_name=$img_name" >> ${GITHUB_OUTPUT}
