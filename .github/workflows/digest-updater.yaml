@@ -362,6 +362,7 @@ jobs:
           echo "hash=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
   loopa:
+    needs: [ initialize ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
