@@ -354,7 +354,6 @@ jobs:
         files: [ "notebook-images/base/jupyter-minimal-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-pytorch-notebook-imagestream.yaml","notebook-images/base/jupyter-tensorflow-notebook-imagestream.yaml" ]
 
     steps:
-     
       - name: Configure Git
         run: |
          git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -371,7 +370,6 @@ jobs:
         shell: bash
         run: |
           echo "HASH=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
-
 
       - name: Checkout main from the odh-manifest repo
         uses: actions/checkout@v3
@@ -395,7 +393,7 @@ jobs:
         run: |
           notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
           src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
-          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ steps.hash.outputs.HASH }}"  
+          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ steps.hash.outputs.HASH }}"
           echo $regex
 
           latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
@@ -408,7 +406,9 @@ jobs:
           echo $digest
 
           yq eval '.spec.tags[0].from.name = "'$digest'"' -i ${{ matrix.files }}
-          git fetch origin ${{ inputs.branch }} && git add ${{ matrix.files }} && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+          git fetch origin ${{ inputs.branch }} && git pull origin ${{ inputs.branch}} && git add ${{ matrix.files }} && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+
+      
 
 
 ################
