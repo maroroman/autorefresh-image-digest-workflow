@@ -236,8 +236,92 @@
       #     message: 'Your commit message'
 
 
-#######################
+####################### working example
 
+# on:
+#   workflow_dispatch:
+#     inputs:
+#       branch:
+#         required: true
+#         description: "Provide release branch name that you want to update the digests"
+#       notebooks_release:
+#         required: true
+#         description: "Provide notebook release ex:2023a"
+
+# jobs:
+#   update-yaml:
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+
+#     steps:
+#       - name: Configure Git
+#         run: |
+#          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+#          git config --global user.name "GitHub Actions"
+
+#       - name: Install Skopeo CLI
+#         shell: bash
+#         run: |
+#           sudo apt-get -y update
+#           sudo apt-get -y install skopeo
+
+#       - name: Checkout upstream notebooks repo
+#         uses: actions/checkout@v3
+#         with:
+#          repository: opendatahub-io/notebooks.git
+#          ref: 2023a
+
+#       - name: Retrive latest weekly commit hash from the release branch
+#         id: hash
+#         shell: bash
+#         run: |
+#           echo "hash=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
+
+#      # Updates yaml files
+
+#       - name: Checkout main from the odh-manifest repo
+#         uses: actions/checkout@v3
+#         with:
+#           ref: main
+
+#       - name: Fetch Name Image from Main Branch Image Stream (Step 1)
+#         shell: bash
+#         id: img_name
+#         run: |
+#          echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+
+#       - name: Checkout release branch
+#         uses: actions/checkout@v3
+#         with:
+#           ref:  ${{ inputs.branch }}
+
+#       - name: Fetch digest, and update the imagestream file (Step 2)
+#         env:
+#           HASH: ${{ steps.hash.outputs.hash }}
+#           IMG_NAME: ${{ steps.img_name.outputs.img_name }}
+#         run: |
+#           notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
+#           src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
+#           regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ env.HASH }}"
+#           echo $regex
+
+#           latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+#           # latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E  $src_tag-${{ inputs.notebooks_release }}-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
+
+#           echo $latest_tag
+
+#           digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
+#           digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
+#           echo $digest
+
+#           yq eval '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
+#           git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+
+
+
+
+###############################
 on:
   workflow_dispatch:
     inputs:
@@ -249,11 +333,10 @@ on:
         description: "Provide notebook release ex:2023a"
 
 jobs:
-  update-yaml:
+  initialize:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - name: Configure Git
         run: |
@@ -278,7 +361,15 @@ jobs:
         run: |
           echo "hash=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
-     # Updates yaml files      
+  loopa:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        files: [ "notebook-images/base/jupyter-minimal-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-pytorch-notebook-imagestream.yaml","notebook-images/base/jupyter-tensorflow-notebook-imagestream.yaml" ]
+
+    steps:
 
       - name: Checkout main from the odh-manifest repo
         uses: actions/checkout@v3
@@ -289,7 +380,7 @@ jobs:
         shell: bash
         id: img_name
         run: |
-         echo "img_name=$(yq '.spec.tags[0].from.name' notebook-images/base/jupyter-minimal-notebook-imagestream.yaml | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+         echo "img_name=$(yq '.spec.tags[0].from.name' $files | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
 
       - name: Checkout release branch
         uses: actions/checkout@v3
@@ -315,39 +406,28 @@ jobs:
           digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
           echo $digest
 
-          yq eval '.spec.tags[0].from.name = "'$digest'"' -i notebook-images/base/jupyter-minimal-notebook-imagestream.yaml
-          git fetch origin ${{ inputs.branch }} && git add notebook-images/base/jupyter-minimal-notebook-imagestream.yaml && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+          yq eval '.spec.tags[0].from.name = "'$digest'"' -i $files
+          git fetch origin ${{ inputs.branch }} && git add $files && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+
+
+################
+
+
+# my_loop_job:
+#     name: loop job
+#     runs-on: my-github-runners
+#     strategy:
+#       matrix:
+#         my_variable: [ "var1", "var2", "var3" ]
+        
+#    steps:
+#     - name: test loop
+#       run: |
+#           echo "running the steps for $my_variable" 
+#           sh myscript.sh $
 
 
 
-
-
-
-# img_name=quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
-# notebooks_release=2023a
-# HASH=267797c
-#   notebook=$(echo $img_name | cut -d':' -f2)
-#   src_tag=$(echo $notebook |  sed 's/-2023a.*//')
-#   regex="$src_tag-2023a-\[0-9]+-$HASH"
-
-
-#   latest_tag=$(skopeo inspect docker://$img_name | jq .RepoTags | grep -E $regex | head -n 1 | sed 's/[,"[:space:]]//g')
-
-    
-#     latest_tag=$(skopeo inspect docker://$img_name | jq .RepoTags | grep -E $src_tag-$notebooks_release-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
-
-
-
-# skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly | jq .RepoTags | grep -E jupyter-datascience-ubi9-python-3\.9-2023a-\[0-9]+-267797c | head -n 1 | sed 's/[,"[:space:]]//g'
-
-
-
-
-
-
-
-
-# quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
 
 
       # # Loop over YAML files in notebook-images/base/ directory
@@ -404,5 +484,31 @@ jobs:
 
 # echo -e  "    - Generated Annotations: $str_annotations " | tr -d '\\'
 # yq -i -Y '.spec.tags['$cur_pos'].annotations."opendatahub.io/notebook-python-dependencies" = "'$str_annotations'"' $file
+
+
+
+
+# img_name=quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly
+# notebooks_release=2023a
+# HASH=267797c
+#   notebook=$(echo $img_name | cut -d':' -f2)
+#   src_tag=$(echo $notebook |  sed 's/-2023a.*//')
+#   regex="$src_tag-2023a-\[0-9]+-$HASH"
+
+
+#   latest_tag=$(skopeo inspect docker://$img_name | jq .RepoTags | grep -E $regex | head -n 1 | sed 's/[,"[:space:]]//g')
+
+    
+#     latest_tag=$(skopeo inspect docker://$img_name | jq .RepoTags | grep -E $src_tag-$notebooks_release-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
+
+
+
+# skopeo inspect docker://quay.io/opendatahub/workbench-images:jupyter-datascience-ubi9-python-3.9-2023a-weekly | jq .RepoTags | grep -E jupyter-datascience-ubi9-python-3\.9-2023a-\[0-9]+-267797c | head -n 1 | sed 's/[,"[:space:]]//g'
+
+
+
+
+
+
 
 
