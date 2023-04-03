@@ -374,45 +374,45 @@ jobs:
       - name: test loop
         shell: bash
         run: |
-         echo "running the steps for $files"
+         echo "running the steps for ${{ matrix.files }}"
 
-      # - name: Checkout main from the odh-manifest repo
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref: main
+      - name: Checkout main from the odh-manifest repo
+        uses: actions/checkout@v3
+        with:
+          ref: main
 
-      # - name: Fetch Name Image from Main Branch Image Stream (Step 1)
-      #   shell: bash
-      #   id: img_name
-      #   run: |
-      #    echo "img_name=$(yq '.spec.tags[0].from.name' $files | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
+      - name: Fetch Name Image from Main Branch Image Stream (Step 1)
+        shell: bash
+        id: img_name
+        run: |
+         echo "img_name=$(yq '.spec.tags[0].from.name' ${{ matrix.files }} | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
 
-      # - name: Checkout release branch
-      #   uses: actions/checkout@v3
-      #   with:
-      #     ref:  ${{ inputs.branch }}
+      - name: Checkout release branch
+        uses: actions/checkout@v3
+        with:
+          ref:  ${{ inputs.branch }}
 
-      # - name: Fetch digest, and update the imagestream file (Step 2)
-      #   env:
-      #     HASH: ${{ steps.hash.outputs.hash }}
-      #     IMG_NAME: ${{ steps.img_name.outputs.img_name }}
-      #   run: |
-      #     notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
-      #     src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
-      #     regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ env.HASH }}"
-      #     echo $regex
+      - name: Fetch digest, and update the imagestream file (Step 2)
+        env:
+          HASH: ${{ steps.hash.outputs.hash }}
+          IMG_NAME: ${{ steps.img_name.outputs.img_name }}
+        run: |
+          notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
+          src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
+          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ env.HASH }}"
+          echo $regex
 
-      #     latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
-      #     # latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E  $src_tag-${{ inputs.notebooks_release }}-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
+          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+          # latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E  $src_tag-${{ inputs.notebooks_release }}-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
 
-      #     echo $latest_tag
+          echo $latest_tag
 
-      #     digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
-      #     digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
-      #     echo $digest
+          digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
+          digest=$(echo "$digest" | tr -d '"' | tr -d '\\')
+          echo $digest
 
-      #     yq eval '.spec.tags[0].from.name = "'$digest'"' -i $files
-      #     git fetch origin ${{ inputs.branch }} && git add $files && git commit -m "Update file" && git push origin ${{ inputs.branch }}
+          yq eval '.spec.tags[0].from.name = "'$digest'"' -i ${{ matrix.files }}
+          git fetch origin ${{ inputs.branch }} && git add ${{ matrix.files }} && git commit -m "Update file" && git push origin ${{ inputs.branch }}
 
 
 ################
