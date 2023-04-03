@@ -372,6 +372,7 @@ jobs:
     steps:
 
       - name: test loop
+        shell: bash
         run: |
          echo "running the steps for $files"
 
