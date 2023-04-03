@@ -338,11 +338,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Configure Git
-        run: |
-         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-         git config --global user.name "GitHub Actions"
-
       - name: Install Skopeo CLI
         shell: bash
         run: |
@@ -359,7 +354,7 @@ jobs:
         id: hash
         shell: bash
         run: |
-          echo "hash=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
+          echo "HASH=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
   loopa:
     needs: [ initialize ]
@@ -371,11 +366,11 @@ jobs:
         files: [ "notebook-images/base/jupyter-minimal-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-datascience-notebook-imagestream.yaml", "notebook-images/base/jupyter-pytorch-notebook-imagestream.yaml","notebook-images/base/jupyter-tensorflow-notebook-imagestream.yaml" ]
 
     steps:
-
-      - name: test loop
-        shell: bash
+     
+      - name: Configure Git
         run: |
-         echo "running the steps for ${{ matrix.files }}"
+         git config --global user.email "github-actions[bot]@users.noreply.github.com"
+         git config --global user.name "GitHub Actions"
 
       - name: Checkout main from the odh-manifest repo
         uses: actions/checkout@v3
@@ -395,12 +390,11 @@ jobs:
 
       - name: Fetch digest, and update the imagestream file (Step 2)
         env:
-          HASH: ${{ steps.hash.outputs.hash }}
           IMG_NAME: ${{ steps.img_name.outputs.img_name }}
         run: |
           notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
           src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
-          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ env.HASH }}"
+          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ steps.hash.outputs.HASH }}"  
           echo $regex
 
           latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
@@ -417,6 +411,12 @@ jobs:
 
 
 ################
+
+#  name: Set color
+#         id: random-color-generator
+#         run: echo "SELECTED_COLOR=green" >> $GITHUB_OUTPUT
+#       - name: Get color
+#         run: echo "The selected color is ${{ steps.random-color-generator.outputs.SELECTED_COLOR }}"
 
 
 # my_loop_job:
