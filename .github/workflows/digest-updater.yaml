@@ -303,10 +303,12 @@ jobs:
         run: |
           notebook=$(echo ${{ env.IMG_NAME}} | cut -d':' -f2)
           src_tag=$(echo $notebook |  sed 's/-${{ inputs.notebooks_release }}.*//')
-          regex="$src_tag-2023a-\d+-${{ env.HASH }}"
+          regex="$src_tag-${{ inputs.notebooks_release }}-\d+-${{ env.HASH }}"
           echo $regex
 
-          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E  $src_tag-${{ inputs.notebooks_release }}-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
+          latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')
+          # latest_tag=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq .RepoTags | grep -E  $src_tag-${{ inputs.notebooks_release }}-\[0-9]+-$HASH | head -n 1 | sed 's/[,"[:space:]]//g')
+
           echo $latest_tag
 
           digest=$(skopeo inspect docker://quay.io/opendatahub/workbench-images:$latest_tag | jq .Digest | sed 's/sha256/quay.io\/opendatahub\/workbench-images@sha256/g')
