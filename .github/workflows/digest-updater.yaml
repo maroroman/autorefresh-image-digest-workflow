@@ -3,7 +3,7 @@ on:
     inputs:
       branch:
         required: true
-        description: "Provide release branch name that you want to update the digests"
+        description: "Provide the release branch name you want to update the digests"
 jobs:
   initialize:
     runs-on: ubuntu-latest
@@ -64,7 +64,7 @@ jobs:
           IMG_NAME: ${{ steps.img_name.outputs.img_name }}
         run: |
           notebook=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq '.Labels."io.openshift.build.image"' | cut -d':' -f2 | tr -d '"')
-          release=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq '.Labels."io.openshift.build.commit.ref"'|  tr -d '"')
+          release=$(skopeo inspect docker://${{ env.IMG_NAME }} | jq '.Labels."io.openshift.build.commit.ref"' |  tr -d '"')
           regex="$notebook-$release-\d+-${{ steps.hash.outputs.HASH }}"
           echo $regex
 
