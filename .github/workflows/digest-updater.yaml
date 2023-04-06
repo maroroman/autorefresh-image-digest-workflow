@@ -96,10 +96,7 @@ jobs:
           # Update the .spec.tags[0].from.name field on the release image stream with the digest outputed digest
           yq eval '.spec.tags[0].from.name = "'$digest'"' -i ${{ matrix.files }}
 
-          # Fetch, pull, add, and commit the changes into the release branch
-          #git fetch origin ${{ inputs.branch }} && git pull origin ${{ inputs.branch}} && git add ${{ matrix.files }} && git commit -m "Update file ${{ matrix.files }} via digest-updater GitHub action" && git push origin ${{ inputs.branch }}
-
-          #git fetch origin digest-updater && git pull origin digest-updater && git add ${{ matrix.files }} && git commit -m "Update file ${{ matrix.files }} via digest-updater GitHub action" 
+          # Fetch, pull, add, and commit the changes into the digest-updater branch
           git fetch origin digest-updater && git pull origin digest-updater && git add ${{ matrix.files }} && git commit -m "Update file ${{ matrix.files }} via digest-updater GitHub action" && git push origin digest-updater
 
 

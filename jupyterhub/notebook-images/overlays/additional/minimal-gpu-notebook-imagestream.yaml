@@ -1,0 +1,38 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/tree/main/jupyter/minimal"
+    opendatahub.io/notebook-image-name: "CUDA"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with GPU support and minimal dependency set to start experimenting with Jupyter environment."
+    opendatahub.io/notebook-image-order: "30"
+  name: minimal-gpu
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  # N Version of the image
+  - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.5"},{"name":"Notebook","version":"6.5"}]'
+        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+        opendatahub.io/workbench-image-recommended: 'true'
+    from:
+      kind: DockerImage
+      name: $(odh-minimal-gpu-notebook-image-n)
+    name: "py3.9-v2-cuda-11.8.0"
+    referencePolicy:
+      type: Local
+  # N-1 Version of the image
+  - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"JupyterLab","version":"3.2"},{"name":"Notebook","version":"6.4"}]'
+        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+    from:
+      kind: DockerImage
+      name: $(odh-minimal-gpu-notebook-image-n-1)
+    name: "py3.8-v1-cuda-11.4.2-2"
+    referencePolicy:
+      type: Local

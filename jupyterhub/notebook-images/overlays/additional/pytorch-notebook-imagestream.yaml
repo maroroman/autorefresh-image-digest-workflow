@@ -1,0 +1,38 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    opendatahub.io/notebook-image: "true"
+  annotations:
+    opendatahub.io/notebook-image-url: "https://github.com/red-hat-data-services/notebooks/blob/main/jupyter/pytorch"
+    opendatahub.io/notebook-image-name: "PyTorch"
+    opendatahub.io/notebook-image-desc: "Jupyter notebook image with PyTorch libraries and dependencies to start experimenting with advanced AI/ML notebooks."
+    opendatahub.io/notebook-image-order: "40"
+  name: pytorch
+spec:
+  lookupPolicy:
+    local: true
+  tags:
+  # N Version of the image
+  - annotations:
+      opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.9"},{"name":"PyTorch","version":"1.13"}]'
+      opendatahub.io/notebook-python-dependencies: '[{"name":"PyTorch","version":"1.13"},{"name":"Tensorboard","version":"2.11"},{"name":"Boto3","version":"1.26"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.6"},{"name":"Numpy","version":"1.24"},{"name":"Pandas","version":"1.5"},{"name":"Scikit-learn","version":"1.2"},{"name":"Scipy","version":"1.10"}]'
+      openshift.io/imported-from: quay.io/modh/odh-pytorch-notebook
+      opendatahub.io/workbench-image-recommended: 'true'
+    from:
+      kind: DockerImage
+      name: $(odh-pytorch-gpu-notebook-image-n)
+    name: "py3.9-v2"
+    referencePolicy:
+      type: Local
+  # N-1 Version of the image
+  - annotations:
+        opendatahub.io/notebook-software: '[{"name":"Python","version":"v3.8"},{"name":"PyTorch","version":"1.8"}]'
+        opendatahub.io/notebook-python-dependencies: '[{"name":"PyTorch","version":"1.8"},{"name":"Tensorboard","version":"2.6"},{"name":"Boto3","version":"1.17"},{"name":"Kafka-Python","version":"2.0"},{"name":"Matplotlib","version":"3.4"},{"name":"Numpy","version":"1.19"},{"name":"Pandas","version":"1.2"},{"name":"Scikit-learn","version":"0.24"},{"name":"Scipy","version":"1.6"}]'
+        openshift.io/imported-from: quay.io/modh/cuda-notebooks
+    from:
+      kind: DockerImage
+      name: $(odh-pytorch-gpu-notebook-image-n-1)
+    name: "py3.8-cuda-11.4.2-2"
+    referencePolicy:
+      type: Local
