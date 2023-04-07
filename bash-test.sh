@@ -14,5 +14,5 @@ REGEXES=("v2-${RELEASE}-\d{8}+-${HASH}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.
                 digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')
                 output=$registry@$digest
                 echo $output
-                sed -i "s|^image=.*|image=$output|" jupyterhub/notebook-images/overlays/additional/params.env
+                sed -i "s|${image}=.*|${image}=$output|" jupyterhub/notebook-images/overlays/additional/params.env
               done
