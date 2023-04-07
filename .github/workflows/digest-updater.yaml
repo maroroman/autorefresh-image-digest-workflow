@@ -59,17 +59,6 @@ jobs:
         run: |
           echo "HASH=$(git rev-parse --short HEAD)" >> ${GITHUB_OUTPUT}
 
-      - name: Checkout main from the odh-manifest repo
-        uses: actions/checkout@v3
-        with:
-          ref: main
-      # Get image name from: .spec.tags[0].from.name
-      - name: Fetch the name of the image from Image Stream (Step 1)
-        shell: bash
-        id: img_name
-        run: |
-         echo "img_name=$(yq '.spec.tags[0].from.name' ${{ matrix.files }} | sed 's/\"/\//g')" >> ${GITHUB_OUTPUT}
-
       # Checkout the release branch to apply the updates
       - name: Checkout release branch
         uses: actions/checkout@v3
