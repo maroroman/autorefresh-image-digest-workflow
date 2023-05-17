@@ -1,0 +1,58 @@
+variables:
+  DEFAULT_BRANCH: main
+  RELEASE_N: 2023a
+  TARGET_BRANCH: notebooks-digest-updater
+  COMMIT_HASH: $COMMIT_HASH
+
+notebook-sha-updater:
+  stage: run_job
+  image: quay.io/wenzhou/ubi8-minimal-buildtool:latest
+  tags:
+    - docker
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"  # only run workflow if it is time trigger or manual trigger
+  script: |
+
+    # Checkout a new branch on rhods-live-builder from the given default branch (i.e main)
+    git config user.email $GITLAB_USER_EMAIL
+    git config user.name $GITLAB_USER_NAME
+    git config http.sslVerify false
+
+    git fetch origin $DEFAULT_BRANCH
+    git checkout -b $TARGET_BRANCH
+
+    # Get latest weekly build commit from the https://github.com/opendatahub-io/notebooks/${release_branch} using this as identifier for the latest tag name
+    PAYLOAD=$(curl --silent -H 'Accept: application/vnd.github.v4.raw' https://api.github.com/repos/red-hat-data-services/notebooks/commits?sha=release-$RELEASE_N&per_page=1)
+    COMMIT_HASH=$(echo $PAYLOAD | jq -r '.[0].sha[0:7]')
+    echo "DEBUG: latest commit SHA1 is $COMMIT_HASH"
+
+    # Loop and Proccess over the n versions on the images and fetch the latest digest
+    IMAGES=("odh-minimal-notebook-image-n" "odh-minimal-gpu-notebook-image-n" "odh-pytorch-gpu-notebook-image-n" "odh-generic-data-science-notebook-image-n" "odh-tensorflow-gpu-notebook-image-n" "odh-trustyai-notebook-image-n")
+    REGEXES=("v2-$RELEASE_N-\d{8}+-$COMMIT_HASH" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-$RELEASE_N-\d{8}-$COMMIT_HASH" "v2-$RELEASE_N-\d{8}+-$COMMIT_HASH" "v2-$RELEASE_N-\d{8}+-$COMMIT_HASH" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-$RELEASE_N-\d{8}-$COMMIT_HASH" "v1-$RELEASE_N-\d{8}+-$COMMIT_HASH")
+    for ((i=0;i<${#IMAGES[@]};++i)); do
+        image=${IMAGES[$i]}
+        echo $image
+        regex=${REGEXES[$i]}
+        pullspec=$(cat rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2 | grep "$image:" | grep -oE '[^ ]+@[^ ]+')    # output like quay.io/modh/odh-minimal-notebook-container@sha256:43c88006d3bf71513b5e265a9bcf09b315aaa2142b6175c0e618829927dbaac2
+        registry=$(echo $pullspec | cut -d '@' -f1)                                                                                                                      # output like quay.io/modh/odh-minimal-notebook-container
+        latest_tag=$(skopeo inspect docker://$pullspec | jq -r --arg regex "$regex" '.RepoTags | map(select(. | test($regex))) | .[0]')    # output like v2-2023a-20230411-a06f80a
+        digest=$(skopeo inspect docker://$registry:$latest_tag | jq .Digest | tr -d '"')   # output like sha256:121565fca1a2a1f93bab155b84df571bb90c426f562701d4d07d317daa0114e4
+        static_pullspec=$registry@$digest                                                                                                                                #quay.io/modh/odh-minimal-notebook-container@sha256:121565fca1a2a1f93bab155b84df571bb90c426f562701d4d07d317daa0114e4
+        echo $static_pullspec
+        sed -i "s|$image: $pullspec|$image: $static_pullspec|g" rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2
+        static_pullspec="\"$static_pullspec\""
+        pullspec="\"$pullspec\""
+        sed -i "s|image: $pullspec|image: $static_pullspec|g" rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2
+        sed -i "s|value: $pullspec|value: $static_pullspec|g" rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2
+
+    done
+
+    # Commit the updates into main
+    echo "DEBUG start"
+    cat rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2
+    echo "DEBUG done"
+    git add rhods-operator-live/bundle/template/manifests/clusterserviceversion.yml.j2 
+    git commit -m "Update file clusterserviceversion.yml.j2 via notebook-sha-digest-updater gitlab pipeline"
+    git show HEAD && git branch --show-current # debug can be removed later
+    git push -o ci-skip https://root:$PRIVATE_TOKEN@$CI_SERVER_HOST/$CI_PROJECT_PATH.git -u $TARGET_BRANCH
+
