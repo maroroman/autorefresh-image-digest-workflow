@@ -7,7 +7,13 @@ on:
         description: "Provide the name of the branch you want to update ex master, rhods-x.xx etc"
       release-n:
         required: true
-        description: "Provide release N version of the notebooks ex 2023a"       
+        description: "Provide release N version of the notebooks ex 2023a"
+  schedule:
+    - cron: "5 * * * *" #Scheduled every Friday
+env:
+  DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
+  BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
+  RELEASE_VERSION: ${{ github.event.inputs.release-n || '2023a' }}
 jobs:
   initialize:
     runs-on: ubuntu-latest
@@ -24,11 +30,12 @@ jobs:
       - name: Checkout release branch
         uses: actions/checkout@v3
         with:
-          ref:  ${{ inputs.branch }}
+          ref: ${{ env.BRANCH_NAME }}
 
       # Create a new branch
       - name: Create a new branch
         run: |
+         echo ${{ env.DIGEST_UPDATER_BRANCH }}
          git checkout -b digest-updater
          git push --set-upstream origin digest-updater
 
@@ -48,7 +55,7 @@ jobs:
         uses: actions/checkout@v3
         with:
          repository: red-hat-data-services/notebooks
-         ref: release-${{ inputs.release-n }}
+         ref: release-${{ env.RELEASE_VERSION }}
       - name: Retrive latest weekly commit hash from the release branch
         id: hash
         shell: bash
@@ -59,7 +66,7 @@ jobs:
       - name: Checkout release branch
         uses: actions/checkout@v3
         with:
-          ref: digest-updater
+          ref: ${{ env.DIGEST_UPDATER_BRANCH }}
 
       - name: Fetch digest, and update the param.env file
         run: |
@@ -79,7 +86,7 @@ jobs:
                 echo $output
                 sed -i "s|${image}=.*|${image}=$output|" jupyterhub/notebook-images/overlays/additional/params.env
               done
-              git fetch origin digest-updater && git pull origin digest-updater && git add jupyterhub/notebook-images/overlays/additional/params.env && git commit -m "Update file via digest-updater GitHub action" && git push origin digest-updater
+              git fetch origin ${{ env.DIGEST_UPDATER_BRANCH }} && git pull origin ${{ env.DIGEST_UPDATER_BRANCH }} && git add jupyterhub/notebook-images/overlays/additional/params.env && git commit -m "Update file via digest-updater GitHub action" && git push origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
   open-pull-request:
     needs: [ update-n-version ]
@@ -92,7 +99,7 @@ jobs:
       - name: pull-request
         uses: repo-sync/pull-request@v2
         with:
-          source_branch: digest-updater
+          source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
           destination_branch: ${{ inputs.branch }}
           github_token: ${{ secrets.GH_ACCESS_TOKEN }}
           pr_label: "automated pr"
@@ -102,7 +109,7 @@ jobs:
 
             _Created by `/.github/workflows/digest-updater.yaml`
 
-            :exclamation: **IMPORTANT NOTE**: Remember to delete the `digest-updater` branch after merging the changes
+            :exclamation: **IMPORTANT NOTE**: Remember to delete the `${{ env.DIGEST_UPDATER_BRANCH }}` branch after merging the changes
 
 
 # # The aim of this GitHub workflow is to update the params.env file with the latest digest.
