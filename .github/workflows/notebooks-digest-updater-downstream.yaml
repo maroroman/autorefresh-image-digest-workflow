@@ -36,8 +36,8 @@ jobs:
       - name: Create a new branch
         run: |
          echo ${{ env.DIGEST_UPDATER_BRANCH }}
-         git checkout -b digest-updater
-         git push --set-upstream origin digest-updater
+         git checkout -b ${{ env.DIGEST_UPDATER_BRANCH }}
+         git push --set-upstream origin ${{ env.DIGEST_UPDATER_BRANCH }}
 
   update-n-version:
     needs: [ initialize ]
