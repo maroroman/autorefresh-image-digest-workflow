@@ -9,7 +9,7 @@ on:
         required: true
         description: "Provide release N version of the notebooks ex 2023a"
   schedule:
-    - cron: "5 * * * *" #Scheduled every Friday
+    - cron:  "0 0 * * 5" #Scheduled every Friday
 env:
   DIGEST_UPDATER_BRANCH: digest-updater-${{ github.run_id }}
   BRANCH_NAME: ${{ github.event.inputs.branch || 'main' }}
@@ -71,8 +71,8 @@ jobs:
       - name: Fetch digest, and update the param.env file
         run: |
               IMAGES=("odh-minimal-notebook-image-n" "odh-minimal-gpu-notebook-image-n" "odh-pytorch-gpu-notebook-image-n" "odh-generic-data-science-notebook-image-n" "odh-tensorflow-gpu-notebook-image-n" "odh-trustyai-notebook-image-n")
-              REGEXES=("v2-${{ inputs.release-n }}-\d{8}+-${{ steps.hash.outputs.HASH }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ inputs.release-n }}-\d{8}-${{ steps.hash.outputs.HASH }}" "v2-${{ inputs.release-n }}-\d{8}+-${{ steps.hash.outputs.HASH }}" \
-                       "v2-${{ inputs.release-n }}-\d{8}+-${{ steps.hash.outputs.HASH }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ inputs.release-n }}-\d{8}-${{ steps.hash.outputs.HASH }}" "v1-${{ inputs.release-n }}-\d{8}+-${{ steps.hash.outputs.HASH }}")
+              REGEXES=("v2-${{ env.RELEASE_VERSION }}-\d{8}+-${{ steps.hash.outputs.HASH }}" "cuda-[a-z]+-minimal-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION }}-\d{8}-${{ steps.hash.outputs.HASH }}" "v2-${{ env.RELEASE_VERSION }}-\d{8}+-${{ steps.hash.outputs.HASH }}" \
+                       "v2-${{ env.RELEASE_VERSION }}-\d{8}+-${{ steps.hash.outputs.HASH }}" "cuda-[a-z]+-tensorflow-[a-z0-9]+-[a-z]+-3.9-${{ env.RELEASE_VERSION }}-\d{8}-${{ steps.hash.outputs.HASH }}" "v1-${{ env.RELEASE_VERSION }}}-\d{8}+-${{ steps.hash.outputs.HASH }}")
 
               for ((i=0;i<${#IMAGES[@]};++i)); do
                 image=${IMAGES[$i]}
@@ -100,7 +100,7 @@ jobs:
         uses: repo-sync/pull-request@v2
         with:
           source_branch: ${{ env.DIGEST_UPDATER_BRANCH }}
-          destination_branch: ${{ inputs.branch }}
+          destination_branch: ${{ env.BRANCH_NAME}}
           github_token: ${{ secrets.GH_ACCESS_TOKEN }}
           pr_label: "automated pr"
           pr_title: "[Digest Updater Action] Update notebook's imageStreams image tag to digest format"
