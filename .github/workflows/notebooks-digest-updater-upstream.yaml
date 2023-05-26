@@ -97,7 +97,6 @@ jobs:
         uses: peter-evans/create-pull-request@v4.2.3
         with:
           branch:  ${{ env.DIGEST_UPDATER_BRANCH }}
-          base: ${{ env.BRANCH_NAME}}
           token: ${{ secrets.GITHUB_TOKEN }}
           delete-branch: true
           labels: |
