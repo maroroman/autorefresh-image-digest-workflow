@@ -98,7 +98,7 @@ jobs:
         with:
           branch:  ${{ env.DIGEST_UPDATER_BRANCH }}
           base: ${{ env.BRANCH_NAME}}
-          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           delete-branch: true
           labels: |
             automated pr
