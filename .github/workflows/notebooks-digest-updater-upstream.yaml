@@ -93,15 +93,17 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: pull-request
-        uses: repo-sync/pull-request@v2
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4.2.3
         with:
-          source_branch:  ${{ env.DIGEST_UPDATER_BRANCH }}
-          destination_branch: ${{ env.BRANCH_NAME}}
-          github_token: ${{ secrets.GH_ACCESS_TOKEN }}
-          pr_label: "automated pr"
-          pr_title: "[Digest Updater Action] Update notebook's imageStreams image tag to digest format"
-          pr_body: |
+          branch:  ${{ env.DIGEST_UPDATER_BRANCH }}
+          base: ${{ env.BRANCH_NAME}}
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
+          delete-branch: true
+          labels: |
+            automated pr
+          title: "[Digest Updater Action] Update notebook's imageStreams image tag to digest format"
+          body: |
             :rocket: This is a automated PR
 
             _Created by `/.github/workflows/digest-updater.yaml`
